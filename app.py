@@ -8,17 +8,17 @@ from langchain_community.vectorstores import FAISS
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 
 warnings.filterwarnings("ignore")
 
 # -------------------- ENV --------------------
 load_dotenv()
-if "GROQ_API_KEY" not in os.environ:
-    st.error("❌ GROQ_API_KEY not set in Hugging Face Secrets")
-    st.stop()
-
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+if "OPENROUTER_API_KEY" not in os.environ:
+    st.error("❌ OPENROUTER_API_KEY not set in Streamlit Secrets")
+    st.stop()
 
 data_directory = os.path.join(os.path.dirname(__file__), "data")
 vector_store_path = os.path.join(data_directory, "faiss_index")
@@ -48,45 +48,43 @@ if not os.path.exists(os.path.join(vector_store_path, "index.faiss")):
 
 vector_store = load_vector_store()
 
-# -------------------- FREE LLM (GROQ) --------------------
-llm = ChatGroq(
-    model="llama3-70b-8192",
+# -------------------- OPENROUTER LLM --------------------
+llm = ChatOpenAI(
+    model="google/gemma-3-4b-it:free",
+    api_key=os.environ["OPENROUTER_API_KEY"],
+    base_url="https://openrouter.ai/api/v1",
     temperature=0.7,
     max_tokens=512,
-    api_key=os.environ["GROQ_API_KEY"]
+    default_headers={
+        "HTTP-Referer": "https://streamlit.io",
+        "X-Title": "FashionBot"
+    }
 )
-
-
 
 # -------------------- PROMPT --------------------
 prompt_template = """
 As a highly knowledgeable fashion assistant, your role is to accurately interpret fashion queries and 
 provide responses using our specialized fashion database. Follow these directives to ensure optimal user interactions:
-1. Precision in Answers: Respond solely with information directly relevant to the user's query from our fashion database. 
-    Refrain from making assumptions or adding extraneous details.
-2. Topic Relevance: Limit your expertise to specific fashion-related areas:
-    - Fashion Trends
-    - Personal Styling Advice
-    - Seasonal Wardrobe Selections
-    - Accessory Recommendations
-3. Handling Off-topic Queries: For questions unrelated to fashion (e.g., general knowledge questions like "Why is the sky blue?"), 
-    politely inform the user that the query is outside the chatbot’s scope and suggest redirecting to fashion-related inquiries.
-4. Promoting Fashion Awareness: Craft responses that emphasize good fashion sense, aligning with the latest trends and 
-    personalized style recommendations.
-5. Contextual Accuracy: Ensure responses are directly related to the fashion query, utilizing only pertinent 
-    information from our database.
-6. Relevance Check: If a query does not align with our fashion database, guide the user to refine their 
-    question or politely decline to provide an answer.
-7. Avoiding Duplication: Ensure no response is repeated within the same interaction, maintaining uniqueness and 
-    relevance to each user query.
-8. Streamlined Communication: Eliminate any unnecessary comments or closing remarks from responses. Focus on
-    delivering clear, concise, and direct answers.
-9. Avoid Non-essential Sign-offs: Do not include any sign-offs like "Best regards" or "FashionBot" in responses.
-10. One-time Use Phrases: Avoid using the same phrases multiple times within the same response. Each 
-    sentence should be unique and contribute to the overall message without redundancy.
-Fashion Query:
+
+1. Precision in Answers: Respond solely with information directly relevant to the user's query from our fashion database.
+2. Topic Relevance: Limit your expertise to:
+   - Fashion Trends
+   - Personal Styling Advice
+   - Seasonal Wardrobe Selections
+   - Accessory Recommendations
+3. Off-topic Queries: Politely decline and redirect to fashion-related topics.
+4. Fashion Awareness: Emphasize good fashion sense and trends.
+5. Contextual Accuracy: Use only the retrieved fashion context.
+6. Avoid Duplication: No repeated phrases.
+7. Streamlined Communication: Clear, concise, direct.
+8. No Sign-offs.
+
+Fashion Context:
 {context}
-Question: {question}
+
+User Question:
+{question}
+
 Answer:
 """
 
@@ -101,16 +99,21 @@ retriever = vector_store.as_retriever(search_kwargs={"k": 3})
 def format_docs(docs):
     return "\n\n".join(doc.page_content for doc in docs)
 
-rag_chain = (
-    {"context": retriever | format_docs, "question": RunnablePassthrough()}
-    | custom_prompt
-    | llm
-    | StrOutputParser()
-)
+@st.cache_resource
+def load_rag_chain():
+    return (
+        {"context": retriever | format_docs, "question": RunnablePassthrough()}
+        | custom_prompt
+        | llm
+        | StrOutputParser()
+    )
 
 def get_response(question):
-    response = rag_chain.invoke(question)
-    return response.strip()
+    try:
+        rag_chain = load_rag_chain()
+        return rag_chain.invoke(question).strip()
+    except Exception:
+        return "⚠️ The AI service is temporarily unavailable. Please try again."
 
 # -------------------- UI STYLES --------------------
 st.markdown(
@@ -136,7 +139,8 @@ with st.sidebar:
     st.title("🤖 FashionBot")
     st.markdown("""
 Hi! 👋 I'm here to help you with fashion choices.
-**You can ask about:**
+
+**Ask me about:**
 - Fashion Trends 👕
 - Personal Styling 👢
 - Seasonal Outfits 🌞
@@ -146,9 +150,10 @@ Hi! 👋 I'm here to help you with fashion choices.
 # -------------------- INITIAL MESSAGE --------------------
 initial_message = """
 Hi there! 👋 I'm your **FashionBot** 🤖  
+
 Try asking:
 - 🎀 What are the top fashion trends this summer?
-- 🎀 Suggest an outfit for a summer wedding
+- 🎀 Suggest a men’s summer outfit
 - 🎀 Must-have winter accessories
 - 🎀 Shoes for a cocktail dress
 - 🎀 Best look for a professional photoshoot
