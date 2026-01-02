@@ -1,0 +1,88 @@
+# ===============================
+# Python / Streamlit
+# ===============================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# ===============================
+# Virtual Environments
+# ===============================
+.venv/
+venv/
+env/
+ENV/
+
+# ===============================
+# Environment Variables
+# ===============================
+.env
+
+# ===============================
+# Logs
+# ===============================
+*.log
+debug.log
+
+# ===============================
+# OS / Editor files
+# ===============================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ===============================
+# Conda / Installers
+# ===============================
+Miniconda-latest-Windows-x86_64.exe
+*.exe
+*.msi
+
+# ===============================
+# Build / Cache
+# ===============================
+build/
+dist/
+.eggs/
+*.egg-info/
+
+# ===============================
+# SQLite / Temporary DBs
+# ===============================
+*.sqlite3
+
+# ===============================
+# HuggingFace / LangChain cache
+# ===============================
+.cache/
+huggingface/
+hf_cache/
+
+# ===============================
+# FAISS
+# ===============================
+# Keep FAISS index, ignore accidental duplicates
+data/**/chroma.sqlite3
+
+# ===============================
+# PDFs (optional: keep if needed)
+# ===============================
+# Uncomment if you do NOT want PDFs in repo
+# *.pdf
+
+# ===============================
+# Scripts not needed in deployment
+# ===============================
+vector_embeddings.py
+MIGRATION_TO_FAISS.md
+SETUP_GUIDE.md
+SETUP_STATUS.md
+
+# ===============================
+# Windows build tools
+# ===============================
+VisualStudioSetup.exe
+vs_BuildTools.exe
+pysqlite3_wheels-*.whl
