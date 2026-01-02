@@ -50,10 +50,12 @@ vector_store = load_vector_store()
 
 # -------------------- FREE LLM (GROQ) --------------------
 llm = ChatGroq(
-    model="llama3-1b-8192",
+    model="mixtral-8x7b-32768",
     temperature=0.7,
-    max_tokens=1024,
+    max_tokens=512,
 )
+
+
 # -------------------- PROMPT --------------------
 prompt_template = """
 As a highly knowledgeable fashion assistant, your role is to accurately interpret fashion queries and 
